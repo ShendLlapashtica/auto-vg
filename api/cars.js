@@ -99,21 +99,27 @@ function toEncarManufacturer(val) {
   return key ? MANUFACTURER_REVERSE[key] : val;
 }
 
+// BMW-style numbered series ("1 Series", "3-Series") are stored on Encar as
+// "N시리즈", usually with a generation code appended (e.g. "1시리즈 (F20)"),
+// so this is only ever used as a substring term, never an exact filter value.
+function seriesTransliteration(val) {
+  const m = val.trim().match(/^(\d)\s*-?\s*series$/i);
+  return m ? `${m[1]}시리즈` : null;
+}
+
 // Models not in the Korean-market dictionary are almost always alphanumeric
 // export codes (X5, A4, RS6, C200...) that Encar stores upper-cased.
 function toEncarModel(val) {
   if (!val) return null;
   const key = findKey(MODEL_REVERSE, val);
   if (key) return MODEL_REVERSE[key];
-  // BMW-style numbered series ("1 Series", "3-Series") are stored as "N시리즈"
-  const series = val.match(/^(\d)\s*-?\s*series$/i);
-  if (series) return `${series[1]}시리즈`;
-  return val.toUpperCase();
+  return seriesTransliteration(val) ?? val.toUpperCase();
 }
 
 // Parse a free-text keyword like "hyundai tucson" or "bmw x5" into filter parts.
 // Matching is case-insensitive throughout so natural, lowercase typing works.
-// `remainder` keeps the raw (unmapped) leftover text for the substring fallback.
+// `remainder` keeps the (possibly transliterated) leftover text for the
+// substring fallback tier, which is where series names actually get resolved.
 function parseKeyword(keyword) {
   if (!keyword) return {};
   const parts = keyword.trim().split(/\s+/);
@@ -123,11 +129,21 @@ function parseKeyword(keyword) {
     const candidate = parts.slice(0, len).join(' ');
     const key = findKey(MANUFACTURER_REVERSE, candidate);
     if (key) {
-      const rest   = parts.slice(len).join(' ');
+      const rest = parts.slice(len).join(' ');
       const result = { manufacturer: MANUFACTURER_REVERSE[key] };
-      if (rest) { result.model = toEncarModel(rest); result.remainder = rest; }
+      if (rest) {
+        const translit    = seriesTransliteration(rest);
+        result.model     = translit ?? toEncarModel(rest);
+        result.remainder = translit ?? rest;
+      }
       return result;
     }
+  }
+
+  // "N Series" typed with no manufacturer is BMW's signature naming — hint it
+  const translit = seriesTransliteration(keyword);
+  if (translit) {
+    return { manufacturer: MANUFACTURER_REVERSE['BMW'], model: translit, remainder: translit };
   }
 
   // No manufacturer recognized — treat the whole keyword as a model/badge search
