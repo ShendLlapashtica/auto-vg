@@ -3,10 +3,9 @@ import { useParams, useLocation, Link } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MessageCircle, Gauge, Calendar, Fuel,
   Settings, Users, ShieldCheck, AlertTriangle, Info, MapPin,
-  ExternalLink, Mail, Zap, Wind, Car, ChevronDown, ChevronRight, X,
+  ExternalLink, Mail, Zap, Wind, Car, ChevronRight, X,
 } from 'lucide-react';
 import ImageGallery from '../components/ImageGallery.jsx';
-import AccidentDiagram from '../components/AccidentDiagram.jsx';
 import CarCard from '../components/CarCard.jsx';
 import {
   carYear, manwonToEur, durresPrice, pristinePrice,
@@ -14,7 +13,6 @@ import {
 } from '../lib/utils.js';
 import { translateFuel, translateTrans, translateOption, translateColor } from '../lib/translations.js';
 import { useCountry } from '../contexts/CountryContext.jsx';
-import { fetchInspect } from '../lib/inspectClient.js';
 
 const WHATSAPP    = '38348407634';
 const PHONE       = '+383 48 407 634';
@@ -52,17 +50,9 @@ export default function CarDetail() {
 
   // useState initializer runs fresh on each mount (guaranteed by key={id} in App.jsx)
   const [car, setCar]           = useState(state?.car || null);
-  const [inspect, setInspect]   = useState(null);
   const [similar, setSimilar]   = useState([]);
-  const [loadingCar, setLoadingCar]         = useState(!state?.car);
-  const [loadingInspect, setLoadingInspect] = useState(false);
+  const [loadingCar, setLoadingCar] = useState(!state?.car);
   const [error, setError]       = useState(null);
-  const inspectRef      = useRef(null);
-  const [openGroups, setOpenGroups] = useState({});
-  const [inspModal, setInspModal] = useState(null);
-  const [accident, setAccident] = useState(null);
-  const [loadingAccident, setLoadingAccident] = useState(false);
-  const [reportTab, setReportTab] = useState('gjendja');
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, []);
 
@@ -77,29 +67,6 @@ export default function CarDetail() {
       .catch(e => setError(e.message))
       .finally(() => setLoadingCar(false));
   }, [id, car]);
-
-  useEffect(() => {
-    if (!id) return;
-    setLoadingInspect(true);
-    fetchInspect(id)
-      .then(data => setInspect(data))
-      .catch(() => setInspect({
-        apiError: true, damage: null, repairHistory: [],
-        historyAvailable: false, internalInspection: [],
-        ownerHistory: [], usageHistory: null
-      }))
-      .finally(() => setLoadingInspect(false));
-  }, [id]);
-
-  useEffect(() => {
-    if (!id) return;
-    setLoadingAccident(true);
-    fetch(`/api/accident?id=${id}`)
-      .then(r => r.json())
-      .then(data => setAccident(data))
-      .catch(() => setAccident({ apiError: true, hasRecord: false }))
-      .finally(() => setLoadingAccident(false));
-  }, [id]);
 
   useEffect(() => {
     if (!car?.Manufacturer) return;
@@ -158,17 +125,8 @@ export default function CarDetail() {
   const eurOther = country === 'AL' ? pristinePrice(car.Price) : durresPrice(car.Price);
   const otherCity = country === 'AL' ? 'Prishtinë' : 'Durrës';
 
-  // Car-level fallbacks (always available from the listing API, even when inspect API fails)
-  const carAccidentCount = car.AccidentCount ?? car.AccidentHistoryCount ?? null;
-  const carOwnerCount    = car.OwnerCount ?? car.OwnerChangeCount ?? car.OwnerChanges ?? null;
-  const carIsRental      = car.IsRentalCar === true || car.RentalCar === 'Y' || car.TaxiCar === 'Y' || false;
-  const carIsCommercial  = car.IsCommercialCar === true || car.CommercialCar === 'Y' || false;
-
-  // Resolved values: prefer inspect data, fall back to car listing data
-  const resolvedAccidentCount = inspect?.accidentCount ?? carAccidentCount;
-  const resolvedOwnerCount    = inspect?.ownerCount    ?? carOwnerCount;
-  const resolvedIsRental      = inspect?.usageHistory?.isRental      ?? carIsRental;
-  const resolvedIsCommercial  = inspect?.usageHistory?.isCommercial  ?? carIsCommercial;
+  const resolvedAccidentCount = car.AccidentCount ?? car.AccidentHistoryCount ?? null;
+  const resolvedOwnerCount    = car.OwnerCount ?? car.OwnerChangeCount ?? car.OwnerChanges ?? null;
 
   const waMsg = encodeURIComponent(
     `Jam i interesuar për: ${manufacturer} ${model} ${badge} (${year}) — Encar ID: ${id}`
@@ -369,283 +327,37 @@ export default function CarDetail() {
             )}
 
             {/* ── Raporti i Veturës ── */}
-            <div ref={inspectRef} className="rounded-2xl overflow-hidden"
-                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-
-              {/* Header */}
+            <div className="rounded-2xl overflow-hidden glass-card">
               <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-lo)' }}>
                 <h2 className="text-sm font-bold" style={{ color: 'var(--text-1)' }}>
                   Raporti i Veturës
                 </h2>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-4)' }}>
-                  Inspektim zyrtar · Encar Korea
+                  Raportet zyrtare direkt nga Encar Korea
                 </p>
               </div>
 
-              <div className="p-5">
-                {loadingInspect ? (
-                  <div className="flex items-center gap-2 py-8 justify-center"
-                       style={{ color: 'var(--text-3)' }}>
-                    <span className="w-4 h-4 border-2 border-gray-700 border-t-red-500 rounded-full animate-spin" />
-                    <span className="text-sm">Duke ngarkuar raportin...</span>
+              <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a href={`https://fem.encar.com/cars/report/inspect/${id}`}
+                   target="_blank" rel="noopener noreferrer"
+                   className="flex items-center justify-between gap-3 rounded-xl p-4 transition-all hover:-translate-y-0.5"
+                   style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                  <div>
+                    <p className="font-bold text-sm" style={{ color: 'var(--text-1)' }}>Raporti i Gjendjes</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Inspektimi teknik i plotë · Encar ↗</p>
                   </div>
-                ) : (
-                  <>
-                    {/* 1. Accident diagrams */}
-                    <AccidentDiagram
-                      damage={inspect?.damage}
-                      dataAvailable={!inspect?.apiError && inspect?.damage !== null}
-                    />
-
-                    {/* 2. Tabs */}
-                    <div className="flex gap-2 mt-5 mb-5">
-                      {[['gjendja', 'Raporti i gjendjes'], ['sigurimi', 'Raporti i sigurimit']].map(([key, label]) => (
-                        <button key={key} onClick={() => setReportTab(key)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                          style={reportTab === key
-                            ? { background: 'rgba(220,38,38,0.15)', color: '#f87171',
-                                border: '1px solid rgba(220,38,38,0.3)' }
-                            : { color: 'var(--text-4)', border: '1px solid var(--border-lo)' }}>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {reportTab === 'gjendja' && (<>
-
-                    {/* 3. Inspektimi i brendshëm — accordion groups */}
-                    {inspect?.internalInspection?.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-                           style={{ color: 'var(--text-3)' }}>
-                          Inspektimi i brendshëm
-                        </p>
-                        <div className="space-y-1">
-                          {inspect.internalInspection.map(group => (
-                            <div key={group.group} className="rounded-xl overflow-hidden"
-                                 style={{ border: '1px solid var(--border-lo)' }}>
-                              <button
-                                onClick={() => setOpenGroups(prev => ({
-                                  ...prev, [group.group]: !prev[group.group]
-                                }))}
-                                className="w-full flex items-center justify-between px-4 py-3"
-                                style={{ background: 'var(--bg-card2)', color: 'var(--text-1)' }}>
-                                <span className="text-sm font-semibold">{group.group}</span>
-                                <ChevronDown
-                                  className={`w-4 h-4 transition-transform ${openGroups[group.group] ? 'rotate-180' : ''}`}
-                                  style={{ color: 'var(--text-3)' }} />
-                              </button>
-                              {openGroups[group.group] && (
-                                <table className="w-full text-xs"
-                                       style={{ background: 'var(--bg-card)' }}>
-                                  <thead>
-                                    <tr style={{ borderTop: '1px solid var(--border-lo)' }}>
-                                      <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wider font-semibold"
-                                          style={{ color: 'var(--text-4)' }}>Pjesa</th>
-                                      <th className="text-right px-4 py-2 text-[10px] uppercase tracking-wider font-semibold"
-                                          style={{ color: 'var(--text-4)' }}>Gjendja</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {group.items.map((item, i) => (
-                                      <tr key={i} style={{ borderTop: '1px solid var(--border-lo)' }}>
-                                        <td className="px-4 py-2.5"
-                                            style={{ color: 'var(--text-3)' }}>{item.name}</td>
-                                        <td className="px-4 py-2.5 text-right font-semibold"
-                                            style={{ color: item.ok ? '#10b981' : '#ef4444' }}>
-                                          {item.status}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 4. Historia e perdorimit te vetures */}
-                    <div className="mt-6">
-                      <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-                         style={{ color: 'var(--text-3)' }}>
-                        Historia e Përdorimit të Veturës
-                      </p>
-                      <div className="rounded-xl overflow-hidden"
-                           style={{ border: '1px solid var(--border-lo)' }}>
-                        {[
-                          { label: 'Përdorur si veturë me qera',
-                            value: resolvedIsRental ? 'Po' : 'Jo',
-                            bad: resolvedIsRental },
-                          { label: 'Përdorur për qëllime komerciale',
-                            value: resolvedIsCommercial ? 'Po' : 'Jo',
-                            bad: resolvedIsCommercial },
-                        ].map(({ label, value, bad }, i) => (
-                          <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
-                               style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none',
-                                        background: 'var(--bg-card2)' }}>
-                            <span style={{ color: 'var(--text-3)' }}>{label}</span>
-                            <span className="font-semibold"
-                                  style={{ color: bad ? '#ef4444' : '#10b981' }}>{value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 5. Historia e nderrimit te pronareve */}
-                    {inspect?.ownerHistory?.length > 0 && (
-                      <div className="mt-6">
-                        <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-                           style={{ color: 'var(--text-3)' }}>
-                          Historia e Ndërrimit të Pronareve
-                        </p>
-                        <div className="rounded-xl overflow-hidden"
-                             style={{ border: '1px solid var(--border-lo)' }}>
-                          {inspect.ownerHistory.map((o, i) => (
-                            <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
-                                 style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none',
-                                          background: 'var(--bg-card2)' }}>
-                              <span className="font-mono text-xs"
-                                    style={{ color: 'var(--text-2)' }}>{o.date}</span>
-                              <span style={{ color: 'var(--text-3)' }}>{o.event}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 6. Historia e Serviseve */}
-                    {inspect?.repairHistory?.length > 0 && (
-                      <div className="mt-6">
-                        <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-                           style={{ color: 'var(--text-3)' }}>
-                          Historia e Serviseve · {inspect.repairHistory.length} regjistrim
-                        </p>
-                        <div className="rounded-xl overflow-hidden"
-                             style={{ border: '1px solid var(--border-lo)' }}>
-                          {inspect.repairHistory.map((h, i) => (
-                            <div key={i} className="flex items-center justify-between px-4 py-3"
-                                 style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none',
-                                          background: 'var(--bg-card2)' }}>
-                              <div>
-                                <span className="font-mono text-xs"
-                                      style={{ color: 'var(--text-2)' }}>{h.date || '—'}</span>
-                                {h.insurance && (
-                                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full"
-                                        style={{ background: 'rgba(220,38,38,0.12)',
-                                                 color: '#f87171' }}>Sigurim</span>
-                                )}
-                              </div>
-                              <span className="text-xs font-semibold"
-                                    style={{ color: 'var(--text-1)' }}>
-                                {h.totalCost
-                                  ? `${Math.round(Number(h.totalCost)/1450).toLocaleString('de-DE')} €`
-                                  : '—'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    </>)}
-
-                    {/* Raporti i sigurimit (insurance history) */}
-                    {reportTab === 'sigurimi' && (
-                      loadingAccident ? (
-                        <div className="flex items-center gap-2 py-8 justify-center" style={{ color: 'var(--text-3)' }}>
-                          <span className="w-4 h-4 border-2 border-gray-700 border-t-red-500 rounded-full animate-spin" />
-                          <span className="text-sm">Duke ngarkuar historikun...</span>
-                        </div>
-                      ) : (!accident || accident.apiError || !accident.hasRecord) ? (
-                        <p className="text-sm text-center py-8" style={{ color: 'var(--text-4)' }}>
-                          Nuk ka te dhena sigurimi per kete veture.
-                        </p>
-                      ) : (
-                        <div>
-                          {accident.requestDate && (
-                            <p className="text-center text-xs mb-4" style={{ color: 'var(--text-4)' }}>
-                              Data e kerkeses per informacion &middot; {accident.requestDate}
-                            </p>
-                          )}
-                          <div className="rounded-xl overflow-hidden mb-6" style={{ border: '1px solid var(--border-lo)' }}>
-                            {[
-                              ['Nderrime pronari', `${accident.counts.ownerChange} here`, accident.counts.ownerChange > 0],
-                              ['Nderrime targe', `${accident.counts.carNoChange} here`, accident.counts.carNoChange > 0],
-                              ['Humbje totale / Permbytje / Vjedhje', `${accident.counts.totalLoss} / ${accident.counts.flood} / ${accident.counts.robber}`, (accident.counts.totalLoss + accident.counts.flood + accident.counts.robber) > 0],
-                              ['Aksidente (demtim i kesaj veture)', `${accident.counts.myAccident} here \u00b7 ${accident.costs.myAccident.toLocaleString('de-DE')} \u20a9`, accident.counts.myAccident > 0],
-                              ['Aksidente (demtim automjeti tjeter)', accident.counts.otherAccident > 0 ? `${accident.counts.otherAccident} here \u00b7 ${accident.costs.otherAccident.toLocaleString('de-DE')} \u20a9` : 'nuk ekziston', accident.counts.otherAccident > 0],
-                            ].map(([label, value, bad], i) => (
-                              <div key={i} className="flex items-center justify-between px-4 py-3 text-sm"
-                                   style={{ borderTop: i > 0 ? '1px solid var(--border-lo)' : 'none', background: 'var(--bg-card2)' }}>
-                                <span style={{ color: 'var(--text-3)' }}>{label}</span>
-                                <span className="font-semibold text-right ml-4" style={{ color: bad ? '#ef4444' : '#10b981' }}>{value}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {accident.myAccidents.length > 0 && (
-                            <div className="mb-6">
-                              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)' }}>
-                                Demtimi i kesaj veture &middot; {accident.myAccidents.length} regjistrim
-                              </p>
-                              <div className="space-y-2">
-                                {accident.myAccidents.map((a, i) => (
-                                  <div key={i} className="rounded-xl px-4 py-3" style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="font-mono text-xs" style={{ color: 'var(--text-2)' }}>{a.date}</span>
-                                      <span className="text-xs font-bold" style={{ color: 'var(--text-1)' }}>{(a.totalCost || 0).toLocaleString('de-DE')} \u20a9</span>
-                                    </div>
-                                    <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-4)' }}>
-                                      <span>Pjese {(a.partCost || 0).toLocaleString('de-DE')}</span>
-                                      <span>Pune {(a.laborCost || 0).toLocaleString('de-DE')}</span>
-                                      <span>Lyerje {(a.paintingCost || 0).toLocaleString('de-DE')}</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {accident.otherAccidents.length > 0 && (
-                            <div className="mb-6">
-                              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)' }}>
-                                Perpunuar nga sigurimi i pales tjeter &middot; {accident.otherAccidents.length} regjistrim
-                              </p>
-                              <div className="space-y-2">
-                                {accident.otherAccidents.map((a, i) => (
-                                  <div key={i} className="rounded-xl px-4 py-3" style={{ background: 'var(--bg-card2)', border: '1px solid var(--border-lo)' }}>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="font-mono text-xs" style={{ color: 'var(--text-2)' }}>{a.date}</span>
-                                      <span className="text-xs font-bold" style={{ color: 'var(--text-1)' }}>{(a.totalCost || 0).toLocaleString('de-DE')} \u20a9</span>
-                                    </div>
-                                    <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: 'var(--text-4)' }}>
-                                      <span>Pjese {(a.partCost || 0).toLocaleString('de-DE')}</span>
-                                      <span>Pune {(a.laborCost || 0).toLocaleString('de-DE')}</span>
-                                      <span>Lyerje {(a.paintingCost || 0).toLocaleString('de-DE')}</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    )}
-
-                    {/* Fallback link if no data loaded */}
-                    {inspect?.apiError && (
-                      <div className="mt-4 text-center">
-                        <a href={`https://fem.encar.com/cars/report/inspect/${id}`}
-                           target="_blank" rel="noopener noreferrer"
-                           className="text-xs"
-                           style={{ color: 'var(--text-4)' }}>
-                          Shiko raportin e plotë direkt në Encar ↗
-                        </a>
-                      </div>
-                    )}
-                  </>
-                )}
+                  <ExternalLink className="w-4 h-4 flex-shrink-0 text-red-400" />
+                </a>
+                <a href={`https://fem.encar.com/cars/report/accident/${id}`}
+                   target="_blank" rel="noopener noreferrer"
+                   className="flex items-center justify-between gap-3 rounded-xl p-4 transition-all hover:-translate-y-0.5"
+                   style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                  <div>
+                    <p className="font-bold text-sm" style={{ color: 'var(--text-1)' }}>Raporti i Sigurimit</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>Historiku i aksidenteve · Encar ↗</p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 flex-shrink-0 text-red-400" />
+                </a>
               </div>
             </div>
         </div>
@@ -674,4 +386,3 @@ export default function CarDetail() {
     </div>
   );
 }
-

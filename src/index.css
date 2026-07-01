@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS variables — dark mode (default) ── */
+/* ── CSS variables — dark mode only ── */
 :root {
   --bg-page:    #070711;
   --bg-card:    #0c0c1c;
@@ -16,26 +16,8 @@
   --text-2:     #94a3b8;
   --text-3:     #475569;
   --text-4:     #1e2233;
-}
-
-/* ── CSS variables — light mode ── */
-html.light {
-  --bg-page:    #eef3fb;
-  --bg-card:    rgba(255,255,255,0.82);
-  --bg-card2:   rgba(240,247,255,0.7);
-  --bg-input:   rgba(220,38,38,0.04);
-  --border:     rgba(220,38,38,0.1);
-  --border-lo:  rgba(220,38,38,0.06);
-  --text-1:     #0f172a;
-  --text-2:     #334155;
-  --text-3:     #64748b;
-  --text-4:     #e2e8f0;
-}
-
-/* Light mode: very subtle red glassmorphic background */
-html.light body {
-  background: linear-gradient(145deg, #fcebe8 0%, #fbeeee 40%, #fae4e4 70%, #fdecec 100%);
-  background-attachment: fixed;
+  --glass-bg:   rgba(12,12,28,0.55);
+  --glass-border: rgba(255,255,255,0.09);
 }
 
 @layer base {
@@ -52,7 +34,6 @@ html.light body {
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
-  html.light ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
 }
 
 @layer utilities {
@@ -108,6 +89,12 @@ html.light body {
     background: var(--bg-card);
     border: 1px solid var(--border);
     @apply rounded-2xl;
+  }
+  .glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
   }
 }
 

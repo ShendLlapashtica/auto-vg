@@ -38,12 +38,8 @@ export default function CarCard({ car }) {
     <Link
       to={`/car/${car.Id}`}
       state={{ car }}
-      className="group flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        boxShadow: 'none',
-      }}
+      className="group flex flex-col rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 glass-card"
+      style={{ boxShadow: 'none' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(220,38,38,0.3)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(220,38,38,0.05)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
     >

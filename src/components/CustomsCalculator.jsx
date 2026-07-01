@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X, Calculator, ChevronDown } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext.jsx';
 
 function calcAlbania(valueEur) {
   const duty    = valueEur * 0.05;
@@ -22,7 +21,6 @@ function calcKosovo(valueEur) {
 function fmt(n) { return '€' + Math.round(n).toLocaleString('de-DE'); }
 
 export default function CustomsCalculator({ onClose }) {
-  const { dark } = useTheme();
   const [value, setValue] = useState('');
   const [country, setCountry] = useState('XK');
   const result = value > 0
@@ -33,8 +31,7 @@ export default function CustomsCalculator({ onClose }) {
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 z-10 shadow-2xl"
-           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 z-10 shadow-2xl glass-card">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

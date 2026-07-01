@@ -1,19 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { X, Sun, Moon } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useCountry } from '../contexts/CountryContext.jsx';
-import { useTheme } from '../contexts/ThemeContext.jsx';
 import CustomsCalculator from './CustomsCalculator.jsx';
 import MobileMenu from './MobileMenu.jsx';
-
-const BRANDS = [
-  'BMW','Mercedes-Benz','Audi','Volkswagen','Porsche',
-  'Hyundai','Kia','Genesis','Lexus','Toyota','Honda',
-  'Chevrolet','SsangYong','Renault Samsung','Volvo',
-  'Land Rover','Mini','Peugeot','Subaru','Mitsubishi',
-  'Nissan','Infiniti','Maserati','Ferrari','Lamborghini',
-  'Bentley','Rolls-Royce','Jaguar','Ford','Jeep','Cadillac',
-];
+import { BRANDS } from '../lib/brandModels.js';
 
 const FUEL_KEYWORDS = {
   'diesel': 'diesel', 'naftë': 'diesel', 'nafta': 'diesel',
@@ -65,7 +56,6 @@ export default function Header() {
   const [search, setSearch]     = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const { country, setCountry } = useCountry();
-  const { dark, toggle }        = useTheme();
   const navigate                = useNavigate();
 
   function handleSearch(e) {
@@ -83,13 +73,9 @@ export default function Header() {
     setSearch('');
   }
 
-  const hdrBg = dark
-    ? 'bg-[#060610]/90 border-white/[0.06]'
-    : 'bg-white/90 border-black/[0.06]';
-
   return (
     <>
-      <header className={`sticky top-0 z-50 border-b backdrop-blur-xl ${hdrBg}`}>
+      <header className="sticky top-0 z-50 border-b backdrop-blur-xl bg-[#060610]/80 border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center gap-2 h-14">
 
           {/* Logo */}
@@ -132,17 +118,6 @@ export default function Header() {
                 🇽🇰
               </button>
             </div>
-
-            {/* Theme toggle — icon only */}
-            <button
-              onClick={toggle}
-              title={dark ? 'Light mode' : 'Dark mode'}
-              className="hidden sm:flex w-8 h-8 items-center justify-center rounded-xl btn-ghost text-base p-0"
-            >
-              {dark
-                ? <Sun className="w-5 h-5" style={{ color: 'var(--text-1)' }} />
-                : <Moon className="w-5 h-5" style={{ color: 'var(--text-1)' }} />}
-            </button>
 
             <a href="https://wa.me/38348407634" target="_blank" rel="noopener noreferrer"
                className="hidden sm:inline-flex btn-primary text-xs py-1.5 px-3">
@@ -203,8 +178,6 @@ export default function Header() {
           onOpenCalc={() => { setMenu(false); setCalc(true); }}
           country={country}
           setCountry={setCountry}
-          dark={dark}
-          toggleTheme={toggle}
         />
       )}
     </>

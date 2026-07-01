@@ -1,19 +1,17 @@
 import { Link } from 'react-router-dom';
-import { X, Calculator, Sun, Moon, ChevronRight } from 'lucide-react';
+import { X, Calculator, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 
-export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, dark, toggleTheme }) {
+export default function MobileMenu({ onClose, onOpenCalc, country, setCountry }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const drawerBg = dark ? 'bg-[#0a0a18] border-white/10' : 'bg-white border-black/10';
-
   return (
     <div className="fixed inset-0 z-[150] flex justify-end">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-72 h-full border-l flex flex-col shadow-2xl animate-slide-in-right ${drawerBg}`}>
+      <div className="relative w-72 h-full border-l flex flex-col shadow-2xl animate-slide-in-right glass-card">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -59,12 +57,6 @@ export default function MobileMenu({ onClose, onOpenCalc, country, setCountry, d
             <Calculator className="w-4 h-4 text-red-400" />
             <span className="flex-1 text-left text-sm font-medium" style={{ color: 'var(--text-1)' }}>Kalkulatori i Doganës</span>
             <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-3)' }} />
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-card2"
-          >
-            {dark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
           </button>
         </nav>
 

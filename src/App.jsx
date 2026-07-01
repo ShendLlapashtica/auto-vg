@@ -5,7 +5,6 @@ import Footer from './components/Footer.jsx';
 import Home from './pages/Home.jsx';
 import CarDetail from './pages/CarDetail.jsx';
 import { CountryProvider } from './contexts/CountryContext.jsx';
-import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import './index.css';
 
 // Force CarDetail to fully remount when the car ID changes so useState resets correctly
@@ -22,20 +21,18 @@ function ScrollToTop() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <CountryProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <div className="min-h-screen bg-page text-primary">
-            <Header />
-            <Routes>
-              <Route path="/"        element={<Home />} />
-              <Route path="/car/:id" element={<CarDetailMounted />} />
-            </Routes>
-            <Footer />
-          </div>
-        </BrowserRouter>
-      </CountryProvider>
-    </ThemeProvider>
+    <CountryProvider>
+      <BrowserRouter>
+        <ScrollToTop />
+        <div className="min-h-screen bg-page text-primary">
+          <Header />
+          <Routes>
+            <Route path="/"        element={<Home />} />
+            <Route path="/car/:id" element={<CarDetailMounted />} />
+          </Routes>
+          <Footer />
+        </div>
+      </BrowserRouter>
+    </CountryProvider>
   );
 }

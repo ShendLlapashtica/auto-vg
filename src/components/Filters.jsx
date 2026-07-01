@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, RotateCcw, X, SlidersHorizontal } from 'lucide-react';
-
-const BRANDS = [
-  'BMW','Mercedes-Benz','Audi','Volkswagen','Porsche',
-  'Hyundai','Kia','Genesis','Lexus','Toyota','Honda',
-  'Chevrolet','SsangYong','Renault Samsung','Volvo',
-  'Land Rover','Mini','Peugeot','Subaru','Mitsubishi',
-  'Nissan','Infiniti','Maserati','Ferrari','Lamborghini',
-];
+import { BRANDS, MODELS_BY_BRAND } from '../lib/brandModels.js';
 
 const FUELS = [
   { val: '',         label: 'Karburant' },
@@ -28,9 +21,11 @@ const KM_MAX = [
   { val: '200000', label: '≤ 200k km' },
 ];
 
-const EMPTY = { manufacturer: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '' };
+const PRICES = [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
 
-function Sel({ label, value, onChange, children }) {
+const EMPTY = { manufacturer: '', model: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '', priceFrom: '', priceTo: '' };
+
+function Sel({ label, value, onChange, disabled, children }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[10px] uppercase tracking-wider font-mono font-semibold" style={{ color: 'var(--text-3)' }}>
@@ -40,7 +35,8 @@ function Sel({ label, value, onChange, children }) {
         <select
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="select pr-8 text-sm appearance-none w-full"
+          disabled={disabled}
+          className="select pr-8 text-sm appearance-none w-full disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {children}
         </select>
@@ -62,15 +58,26 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
     onForceClose?.();
   }
 
-  function set(key) { return val => onChange(prev => ({ ...prev, [key]: val })); }
+  function set(key) {
+    return val => onChange(prev => {
+      const next = { ...prev, [key]: val };
+      if (key === 'manufacturer') next.model = ''; // brand changed — reset model
+      return next;
+    });
+  }
   const activeCount = Object.values(filters).filter(Boolean).length;
   const hasFilters  = activeCount > 0;
+  const models      = MODELS_BY_BRAND[filters.manufacturer] || [];
 
   const filterContent = (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
       <Sel label="Prodhuesi" value={filters.manufacturer} onChange={set('manufacturer')}>
         <option value="">Të gjithë</option>
         {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+      </Sel>
+      <Sel label="Modeli" value={filters.model} onChange={set('model')} disabled={!filters.manufacturer}>
+        <option value="">{filters.manufacturer ? 'Të gjithë' : 'Zgjidh markën'}</option>
+        {models.map(m => <option key={m} value={m}>{m}</option>)}
       </Sel>
       <Sel label="Karburanti" value={filters.fuel} onChange={set('fuel')}>
         {FUELS.map(f => <option key={f.val} value={f.val}>{f.label === 'Karburant' ? 'Të gjitha' : f.label}</option>)}
@@ -85,6 +92,14 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
       </Sel>
       <Sel label="Km maksimum" value={filters.mileageTo} onChange={set('mileageTo')}>
         {KM_MAX.map(k => <option key={k.val} value={k.val}>{k.val === '' ? 'Pa limit' : k.label}</option>)}
+      </Sel>
+      <Sel label="Çmimi nga" value={filters.priceFrom} onChange={set('priceFrom')}>
+        <option value="">Pa limit</option>
+        {PRICES.map(p => <option key={p} value={p}>{p.toLocaleString('de-DE')} €</option>)}
+      </Sel>
+      <Sel label="Çmimi deri" value={filters.priceTo} onChange={set('priceTo')}>
+        <option value="">Pa limit</option>
+        {PRICES.map(p => <option key={p} value={p}>{p.toLocaleString('de-DE')} €</option>)}
       </Sel>
       {hasFilters ? (
         <div className="flex flex-col gap-1.5">
@@ -105,16 +120,14 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
 
   return (
     <>
-      {/* Desktop: always-visible filter row */}
-      <div className="hidden sm:block" style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-          {filterContent}
-        </div>
+      {/* Desktop: always-visible filter row (caller supplies the outer chrome) */}
+      <div className="hidden sm:block">
+        {filterContent}
       </div>
 
       {/* Mobile: compact horizontal filter strip */}
-      <div className="sm:hidden overflow-x-auto" style={{ borderBottom: '1px solid var(--border-lo)', background: 'var(--bg-page)' }}>
-        <div className="flex gap-2 px-4 py-2.5 min-w-max items-center">
+      <div className="sm:hidden overflow-x-auto -mx-1">
+        <div className="flex gap-2 px-1 py-1 min-w-max items-center">
           {/* Brand */}
           <div className="relative">
             <select value={filters.manufacturer} onChange={e => set('manufacturer')(e.target.value)}
@@ -122,6 +135,18 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
                     style={{ background: filters.manufacturer ? 'rgba(220,38,38,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.manufacturer ? 'rgba(220,38,38,0.3)' : 'var(--border)'}`, color: filters.manufacturer ? '#f87171' : 'var(--text-3)' }}>
               <option value="">Prodhuesi</option>
               {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Model — only meaningful once a brand is chosen */}
+          <div className="relative">
+            <select value={filters.model} onChange={e => set('model')(e.target.value)}
+                    disabled={!filters.manufacturer}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium disabled:opacity-40"
+                    style={{ background: filters.model ? 'rgba(220,38,38,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.model ? 'rgba(220,38,38,0.3)' : 'var(--border)'}`, color: filters.model ? '#f87171' : 'var(--text-3)' }}>
+              <option value="">Modeli</option>
+              {models.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
           </div>
@@ -168,6 +193,28 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
             <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
           </div>
 
+          {/* Price from */}
+          <div className="relative">
+            <select value={filters.priceFrom} onChange={e => set('priceFrom')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.priceFrom ? 'rgba(220,38,38,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.priceFrom ? 'rgba(220,38,38,0.3)' : 'var(--border)'}`, color: filters.priceFrom ? '#f87171' : 'var(--text-3)' }}>
+              <option value="">Çmimi nga</option>
+              {PRICES.map(p => <option key={p} value={p}>{p.toLocaleString('de-DE')} €</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
+          {/* Price to */}
+          <div className="relative">
+            <select value={filters.priceTo} onChange={e => set('priceTo')(e.target.value)}
+                    className="appearance-none text-xs rounded-lg pl-2.5 pr-6 py-1.5 font-medium"
+                    style={{ background: filters.priceTo ? 'rgba(220,38,38,0.08)' : 'var(--bg-input)', border: `1px solid ${filters.priceTo ? 'rgba(220,38,38,0.3)' : 'var(--border)'}`, color: filters.priceTo ? '#f87171' : 'var(--text-3)' }}>
+              <option value="">Çmimi deri</option>
+              {PRICES.map(p => <option key={p} value={p}>{p.toLocaleString('de-DE')} €</option>)}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" style={{ color: 'var(--text-4)' }} />
+          </div>
+
           {/* Clear button — only shows when filters active */}
           {hasFilters && (
             <button onClick={() => onChange(EMPTY)}
@@ -183,7 +230,7 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
       {open && (
         <div className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
-          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up w-full"
+          <div className="relative rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up w-full max-h-[85vh] overflow-y-auto"
                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderBottom: 'none' }}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-base" style={{ color: 'var(--text-1)' }}>

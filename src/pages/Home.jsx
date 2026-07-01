@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { TrendingUp, Shield, Truck, BadgeCheck, Clock, HeartHandshake, Globe, X, SlidersHorizontal } from 'lucide-react';
+import { Shield, Truck, BadgeCheck, Clock, HeartHandshake, Globe, X, SlidersHorizontal } from 'lucide-react';
 import CarCard from '../components/CarCard.jsx';
 import Filters from '../components/Filters.jsx';
 
 const PAGE_SIZE = 24;
-const EMPTY_FILTERS = { manufacturer: '', model: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '' };
+const EMPTY_FILTERS = { manufacturer: '', model: '', fuel: '', yearFrom: '', yearTo: '', mileageTo: '', priceFrom: '', priceTo: '' };
 
 const WHY_US = [
   { icon: BadgeCheck,     title: 'Vetëm Makina të Verifikuara', desc: 'Çdo makinë ka raport inspektimi nga Encar — histori dëmtimesh, numër pronarësh dhe aksidente.' },
@@ -24,6 +24,8 @@ function filtersFromParams(params) {
     yearFrom:     params.get('yearFrom') || '',
     yearTo:       params.get('yearTo')   || '',
     mileageTo:    params.get('kmMax')    || '',
+    priceFrom:    params.get('priceFrom') || '',
+    priceTo:      params.get('priceTo')   || '',
   };
 }
 
@@ -36,6 +38,8 @@ function paramsFromFilters(f, keyword) {
   if (f.yearFrom)     p.yearFrom = f.yearFrom;
   if (f.yearTo)       p.yearTo   = f.yearTo;
   if (f.mileageTo)    p.kmMax    = f.mileageTo;
+  if (f.priceFrom)    p.priceFrom = f.priceFrom;
+  if (f.priceTo)      p.priceTo   = f.priceTo;
   return p;
 }
 
@@ -109,6 +113,8 @@ export default function Home() {
       if (flt.yearFrom)  params.set('yearFrom', flt.yearFrom);
       if (flt.yearTo)    params.set('yearTo', flt.yearTo);
       if (flt.mileageTo) params.set('mileageTo', flt.mileageTo);
+      if (flt.priceFrom) params.set('priceFrom', flt.priceFrom);
+      if (flt.priceTo)   params.set('priceTo', flt.priceTo);
 
       const r    = await fetch(`/api/cars?${params}`);
       const data = await r.json();
@@ -169,55 +175,60 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
 
-      {/* Hero */}
-      <div style={{ borderBottom: '1px solid var(--border-lo)' }}>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 flex items-center justify-between">
-          <div>
-            {isSearching ? (
-              <>
-                <p className="text-[11px] uppercase tracking-widest text-red-500/70 font-semibold font-mono mb-2">
-                  Rezultate për
+      {/* Hero — BMW image with dark gradient overlay */}
+      <div className="relative overflow-hidden" style={{ minHeight: isSearching ? '220px' : '440px' }}>
+        <img src="/hero-bmw.png" alt=""
+             className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 25%' }} />
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(180deg, rgba(5,5,12,0.35) 0%, rgba(5,5,12,0.55) 45%, var(--bg-page) 100%)',
+        }} />
+
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 pt-14 md:pt-20 pb-28 md:pb-32">
+          {isSearching ? (
+            <>
+              <p className="text-[11px] uppercase tracking-widest text-red-400 font-semibold font-mono mb-2">
+                Rezultate për
+              </p>
+              <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-none flex items-center gap-3 text-white">
+                "{keyword}"
+                <button onClick={clearSearch} className="p-1 rounded-full hover:bg-red-500/10 text-gray-300 hover:text-red-400 transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </h1>
+              {total != null && (
+                <p className="text-sm mt-1.5 text-gray-300">
+                  <span className="font-mono font-semibold text-white">{total.toLocaleString('de-DE')}</span> makina u gjetën
                 </p>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-none flex items-center gap-3" style={{ color: 'var(--text-1)' }}>
-                  "{keyword}"
-                  <button onClick={clearSearch} className="p-1 rounded-full hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-all">
-                    <X className="w-5 h-5" />
-                  </button>
-                </h1>
-                {total != null && (
-                  <p className="text-sm mt-1.5" style={{ color: 'var(--text-3)' }}>
-                    <span className="font-mono font-semibold" style={{ color: 'var(--text-2)' }}>{total.toLocaleString('de-DE')}</span> makina u gjetën
-                  </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] uppercase tracking-widest text-red-400 font-semibold mb-3 font-mono">
+                Tregti direkte · Korea Jugore
+              </p>
+              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-none text-white">
+                {total != null ? (
+                  <><span className="font-mono">{total.toLocaleString('de-DE')}</span><span className="text-red-500"> makina</span></>
+                ) : (
+                  <span className="animate-pulse text-gray-500">Duke ngarkuar...</span>
                 )}
-              </>
-            ) : (
-              <>
-                <p className="text-[11px] uppercase tracking-widest text-red-500/70 font-semibold mb-2 font-mono">
-                  Tregti direkte · Korea Jugore
-                </p>
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-none" style={{ color: 'var(--text-1)' }}>
-                  {total != null ? (
-                    <><span className="font-mono">{total.toLocaleString('de-DE')}</span><span className="text-red-500"> makina</span></>
-                  ) : (
-                    <span className="animate-pulse" style={{ color: 'var(--text-4)' }}>Duke ngarkuar...</span>
-                  )}
-                </h1>
-                <p className="text-sm mt-2" style={{ color: 'var(--text-3)' }}>Çmimet përfshijnë transport deri në port · all-in</p>
-              </>
-            )}
-          </div>
-          <TrendingUp className="w-10 h-10 text-red-500/15 hidden md:block" />
+              </h1>
+              <p className="text-sm md:text-base mt-3 text-gray-300 max-w-md">Çmimet përfshijnë transport deri në port · all-in</p>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Filters */}
-      <div ref={filtersWrapRef}>
-        <Filters
-          filters={filters}
-          onChange={handleFilterChange}
-          forceOpen={filterForceOpen}
-          onForceClose={() => setFilterForceOpen(false)}
-        />
+      {/* Filters — glass card floating over the hero */}
+      <div ref={filtersWrapRef} className="max-w-7xl mx-auto px-4 md:px-8 -mt-14 md:-mt-16 relative z-10">
+        <div className="glass-card rounded-2xl p-3 sm:p-4 shadow-2xl">
+          <Filters
+            filters={filters}
+            onChange={handleFilterChange}
+            forceOpen={filterForceOpen}
+            onForceClose={() => setFilterForceOpen(false)}
+          />
+        </div>
       </div>
 
       {/* Desktop floating Filtra button — scrolls back to filter row */}

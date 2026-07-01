@@ -1,11 +1,11 @@
-import { Logo } from './Logo.jsx';
-
 export default function Footer() {
   return (
     <footer style={{ borderTop: '1px solid var(--border-lo)', marginTop: '2rem' }}>
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         <div>
-          <Logo />
+          <span className="bg-black rounded-lg px-2 py-1 inline-flex">
+            <img src="/logo.png" alt="AUTO VG" className="h-9 w-auto" />
+          </span>
           <p className="text-sm mt-4" style={{ color: 'var(--text-2)' }}>
             📍 Magj, Prishtinë 10000, Kosovë
           </p>
@@ -33,7 +33,7 @@ export default function Footer() {
           <p className="text-xs mt-6" style={{ color: 'var(--text-4)' }}>© 2026 AUTO VG</p>
         </div>
 
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', height: '260px' }}>
+        <div className="rounded-2xl overflow-hidden glass-card" style={{ height: '260px' }}>
           <iframe
             title="AUTO VG — Prishtinë"
             src="https://www.google.com/maps?q=Magj,+Prishtin%C3%AB+10000,+Kosovo&output=embed"
