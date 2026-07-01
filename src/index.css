@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS variables — dark mode (default) ── */
+:root {
+  --bg-page:    #070711;
+  --bg-card:    #0c0c1c;
+  --bg-card2:   #0d0d1e;
+  --bg-input:   rgba(255,255,255,0.05);
+  --border:     rgba(255,255,255,0.06);
+  --border-lo:  rgba(255,255,255,0.04);
+  --text-1:     #f1f5f9;
+  --text-2:     #94a3b8;
+  --text-3:     #475569;
+  --text-4:     #1e2233;
+}
+
+/* ── CSS variables — light mode ── */
+html.light {
+  --bg-page:    #eef3fb;
+  --bg-card:    rgba(255,255,255,0.82);
+  --bg-card2:   rgba(240,247,255,0.7);
+  --bg-input:   rgba(59,130,246,0.04);
+  --border:     rgba(59,130,246,0.1);
+  --border-lo:  rgba(59,130,246,0.06);
+  --text-1:     #0f172a;
+  --text-2:     #334155;
+  --text-3:     #64748b;
+  --text-4:     #e2e8f0;
+}
+
+/* Light mode: very subtle blue glassmorphic background */
+html.light body {
+  background: linear-gradient(145deg, #e8f0fc 0%, #eef3fb 40%, #e4eefa 70%, #ecf2fd 100%);
+  background-attachment: fixed;
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-1);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+  html.light ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+}
+
+@layer utilities {
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .bg-page  { background-color: var(--bg-page); }
+  .bg-card  { background-color: var(--bg-card); }
+  .bg-card2 { background-color: var(--bg-card2); }
+  .text-primary   { color: var(--text-1); }
+  .text-secondary { color: var(--text-2); }
+  .text-muted     { color: var(--text-3); }
+  .border-base    { border-color: var(--border); }
+}
+
+@layer components {
+  .glass {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600
+           hover:bg-blue-500 active:scale-95 text-white font-semibold rounded-xl
+           transition-all duration-150 disabled:opacity-40 select-none;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
+           font-medium rounded-xl transition-all duration-150 select-none;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+  }
+  .btn-ghost:hover { color: var(--text-1); background: var(--bg-card2); }
+  .input {
+    @apply w-full rounded-xl px-4 py-2.5 placeholder:text-gray-500
+           focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+  }
+  .select {
+    @apply w-full rounded-xl px-3 py-2.5 focus:outline-none transition-all cursor-pointer;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    @apply rounded-2xl;
+  }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-slide-in-right { animation: slide-in-right 0.22s cubic-bezier(0.16,1,0.3,1) both; }
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.25s cubic-bezier(0.16,1,0.3,1) both; }
