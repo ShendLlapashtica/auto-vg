@@ -104,7 +104,11 @@ function toEncarManufacturer(val) {
 function toEncarModel(val) {
   if (!val) return null;
   const key = findKey(MODEL_REVERSE, val);
-  return key ? MODEL_REVERSE[key] : val.toUpperCase();
+  if (key) return MODEL_REVERSE[key];
+  // BMW-style numbered series ("1 Series", "3-Series") are stored as "N시리즈"
+  const series = val.match(/^(\d)\s*-?\s*series$/i);
+  if (series) return `${series[1]}시리즈`;
+  return val.toUpperCase();
 }
 
 // Parse a free-text keyword like "hyundai tucson" or "bmw x5" into filter parts.
@@ -172,14 +176,28 @@ async function runSearch(parts, offset, count, signal) {
 
 // Last-resort fallback for free text that doesn't map onto an exact Encar
 // facet value (e.g. "1 Series", "Ser", or any other partial/loose term):
-// scan a broad recent batch and keep whatever actually contains the words
+// scan a broad recent batch and rank whatever actually contains the words
 // typed, instead of dead-ending with zero results.
-function textMatches(car, terms) {
-  const haystack = [car.Manufacturer, car.Model, car.Badge, car.BadgeDetail]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return terms.some(t => haystack.includes(t));
+function tokenize(str) {
+  return (str || '').toLowerCase().split(/[^a-z0-9가-힣]+/).filter(Boolean);
+}
+
+// A term that PREFIXES a model token (e.g. "x" -> "x5") is what the user
+// means by a partial model code; a term that just happens to appear
+// mid-token (e.g. "x" inside the generation code "nx4") is much weaker
+// signal and should rank below real matches, not disappear, since we'd
+// rather over- than under-include.
+function matchScore(car, terms) {
+  const modelTokens = tokenize(car.Model);
+  const otherTokens = [...tokenize(car.Manufacturer), ...tokenize(car.Badge), ...tokenize(car.BadgeDetail)];
+  let score = 0;
+  for (const t of terms) {
+    if (modelTokens.some(tok => tok === t))            score += 100;
+    else if (modelTokens.some(tok => tok.startsWith(t))) score += 50;
+    else if (otherTokens.some(tok => tok.startsWith(t))) score += 10;
+    else if ([...modelTokens, ...otherTokens].some(tok => tok.includes(t))) score += 1;
+  }
+  return score;
 }
 
 async function substringSearch(keyword, manufacturer, offset, count, signal) {
@@ -193,7 +211,11 @@ async function substringSearch(keyword, manufacturer, offset, count, signal) {
   const terms    = allTerms.length > 1 ? allTerms.filter(t => t.length >= 2) : allTerms;
   const useTerms = terms.length ? terms : allTerms;
 
-  const matched = broad.SearchResults.filter(car => textMatches(car, useTerms));
+  const matched = broad.SearchResults
+    .map(car => ({ car, score: matchScore(car, useTerms) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.car);
 
   return {
     Count:         matched.length,
