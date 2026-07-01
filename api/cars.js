@@ -116,6 +116,15 @@ function toEncarModel(val) {
   return seriesTransliteration(val) ?? val.toUpperCase();
 }
 
+// True only for a confirmed MODEL_REVERSE dictionary hit — the one case
+// where the Encar value is known to be the car's literal, complete Model
+// facet rather than a base name Encar likely stores with a generation-code
+// suffix. Anything else (series transliteration, upper-cased passthrough)
+// is a substring term only, per the comments on seriesTransliteration/toEncarModel.
+function isExactEncarModel(val) {
+  return !!val && !!findKey(MODEL_REVERSE, val);
+}
+
 // Parse a free-text keyword like "hyundai tucson" or "bmw x5" into filter parts.
 // Matching is case-insensitive throughout so natural, lowercase typing works.
 // `remainder` keeps the (possibly transliterated) leftover text for the
@@ -132,9 +141,10 @@ function parseKeyword(keyword) {
       const rest = parts.slice(len).join(' ');
       const result = { manufacturer: MANUFACTURER_REVERSE[key] };
       if (rest) {
-        const translit    = seriesTransliteration(rest);
-        result.model     = translit ?? toEncarModel(rest);
-        result.remainder = translit ?? rest;
+        const translit   = seriesTransliteration(rest);
+        result.model      = translit ?? toEncarModel(rest);
+        result.remainder  = translit ?? rest;
+        result.modelExact = !translit && isExactEncarModel(rest);
       }
       return result;
     }
@@ -143,11 +153,11 @@ function parseKeyword(keyword) {
   // "N Series" typed with no manufacturer is BMW's signature naming — hint it
   const translit = seriesTransliteration(keyword);
   if (translit) {
-    return { manufacturer: MANUFACTURER_REVERSE['BMW'], model: translit, remainder: translit };
+    return { manufacturer: MANUFACTURER_REVERSE['BMW'], model: translit, remainder: translit, modelExact: false };
   }
 
   // No manufacturer recognized — treat the whole keyword as a model/badge search
-  return { model: toEncarModel(keyword.trim()), remainder: keyword.trim() };
+  return { model: toEncarModel(keyword.trim()), remainder: keyword.trim(), modelExact: isExactEncarModel(keyword.trim()) };
 }
 
 async function attempt(fetchUrl, isWrapped, signal, label, extraHeaders = {}) {
@@ -216,16 +226,18 @@ function matchScore(car, terms) {
   return score;
 }
 
-async function substringSearch(keyword, manufacturer, offset, count, signal) {
-  const scanParts = manufacturer ? [`Manufacturer.${manufacturer}`] : [];
+async function substringSearch(keyword, manufacturer, offset, count, signal, extraParts = []) {
+  const scanParts = [...(manufacturer ? [`Manufacturer.${manufacturer}`] : []), ...extraParts];
   const broad      = await runSearch(scanParts, 0, 500, signal);
 
-  // Single short tokens (e.g. "X" meant to catch X3/X5/X6) are kept as-is;
-  // in multi-word queries a bare 1-char token (e.g. the "1" in "1 Series")
-  // is too noisy to be useful, so it's dropped in favor of the real words.
-  const allTerms = keyword.toLowerCase().split(/\s+/).filter(Boolean);
-  const terms    = allTerms.length > 1 ? allTerms.filter(t => t.length >= 2) : allTerms;
-  const useTerms = terms.length ? terms : allTerms;
+  // Split with the same rule matchScore uses on car fields (tokenize), so a
+  // hyphenated term like "C-CLASS" lines up with Encar's "C-클래스" split
+  // into ["c","클래스"] instead of staying one unmatchable "c-class" blob.
+  // Short tokens (e.g. the "c" in "c-class", or "x" meant to catch X3/X5/X6)
+  // are kept rather than dropped as noise — matchScore already ranks an
+  // exact short-token match (tier 1, score 100) above a mid-token coincidence
+  // (tier 4, score 1), so keeping them only helps precision here.
+  const useTerms = tokenize(keyword);
 
   const matched = broad.SearchResults
     .map(car => ({ car, score: matchScore(car, useTerms) }))
@@ -257,15 +269,24 @@ export default async function handler(req, res) {
   let manufacturer = null;
   let model        = null;
   let remainder    = null; // raw leftover text, used only by the substring fallback
+  let modelExact   = false; // true only for a confirmed MODEL_REVERSE dictionary hit
 
   if (rawKeyword) {
     const parsed = parseKeyword(rawKeyword);
     manufacturer = parsed.manufacturer || null;
     model        = parsed.model        || null;
     remainder    = parsed.remainder    || null;
+    modelExact   = !!parsed.modelExact;
   } else {
     if (q.manufacturer) manufacturer = toEncarManufacturer(q.manufacturer);
-    if (q.model)         model        = toEncarModel(q.model);
+    if (q.model) {
+      model      = toEncarModel(q.model);
+      modelExact = isExactEncarModel(q.model);
+      // Use the transliterated value (not the raw English dropdown text) as
+      // the substring-fallback term — it tokenizes against Encar's raw
+      // Hangul/passthrough-code fields, unlike an English word like "series".
+      remainder = model;
+    }
   }
 
   // Filters shared by every attempt (fuel/year/mileage/price)
@@ -291,9 +312,14 @@ export default async function handler(req, res) {
     commonParts.push(`Price.range(${q.priceFrom ?? 0}..${q.priceTo ?? 999999})`);
   }
 
+  // Only a confirmed dictionary hit is trustworthy as an *exact* Model facet —
+  // Encar stores everything else (series/class/code-style names) with a
+  // generation-code suffix, so an exact filter on those either goes empty or
+  // (worse) returns a small, misleadingly "successful" sliver of real matches
+  // (e.g. only the one Audi listing literally tagged "A4" with no suffix).
   const identityParts = [];
   if (manufacturer) identityParts.push(`Manufacturer.${manufacturer}`);
-  if (model)        identityParts.push(`Model.${model}`);
+  if (model && modelExact) identityParts.push(`Model.${model}`);
 
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 9000);
@@ -301,8 +327,16 @@ export default async function handler(req, res) {
   try {
     let data = await runSearch([...identityParts, ...commonParts], offset, count, ctrl.signal);
 
-    // Nothing matched the exact facet filter — progressively broaden instead
-    // of dead-ending with zero results:
+    // A non-exact model was left out of the facet filter above — narrow the
+    // (brand-wide) results down by substring-matching it now, rather than
+    // waiting for a hard zero-result before trying.
+    if (model && !modelExact) {
+      const narrowed = await substringSearch(remainder, manufacturer, offset, count, ctrl.signal, commonParts);
+      if (narrowed.SearchResults.length > 0) data = narrowed;
+    }
+
+    // Still nothing matched — progressively broaden instead of dead-ending
+    // with zero results:
     //   1. Brand recognized + leftover text ("BMW X" / "BMW X5") → scan that
     //      brand's recent listings for the leftover text (catches X3/X5/X6...).
     //   2. Still nothing but brand is known → show the whole brand.
@@ -310,15 +344,15 @@ export default async function handler(req, res) {
     //      everything for the typed text.
     //   4. Truly nothing matched anywhere → show recent listings rather than
     //      a hard empty state.
-    if (data.SearchResults.length === 0 && rawKeyword) {
+    if (data.SearchResults.length === 0 && (manufacturer || model)) {
       if (manufacturer && remainder) {
-        data = await substringSearch(remainder, manufacturer, offset, count, ctrl.signal);
+        data = await substringSearch(remainder, manufacturer, offset, count, ctrl.signal, commonParts);
       }
       if (data.SearchResults.length === 0 && manufacturer) {
         data = await runSearch([`Manufacturer.${manufacturer}`, ...commonParts], offset, count, ctrl.signal);
       }
       if (data.SearchResults.length === 0 && !manufacturer) {
-        data = await substringSearch(rawKeyword, null, offset, count, ctrl.signal);
+        data = await substringSearch(rawKeyword, null, offset, count, ctrl.signal, commonParts);
       }
       if (data.SearchResults.length === 0) {
         data = await runSearch(commonParts, offset, count, ctrl.signal);
