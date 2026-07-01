@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, RotateCcw, X, SlidersHorizontal } from 'lucide-react';
 import { BRANDS, MODELS_BY_BRAND } from '../lib/brandModels.js';
 
@@ -232,65 +233,75 @@ export default function Filters({ filters, onChange, forceOpen = false, onForceC
         </div>
       </div>
 
-      {/* Full-screen drawer — mobile only */}
-      {open && (
-        <div className="sm:hidden fixed inset-0 z-[100]">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
-          <div className="fixed bottom-0 left-0 right-0 rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up overflow-y-auto"
-               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderBottom: 'none', maxHeight: '85vh' }}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-base" style={{ color: 'var(--text-1)' }}>
-                Filtra
-                {activeCount > 0 && (
-                  <span className="ml-2 text-xs font-mono bg-red-600 text-white px-2 py-0.5 rounded-full">
-                    {activeCount}
-                  </span>
-                )}
-              </h3>
-              <button onClick={close} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost p-0" style={{ color: 'var(--text-1)' }}>
-                <X className="w-4 h-4" />
-              </button>
+      {/* Drawer + floating button are portaled to <body> so `position: fixed`
+          is always relative to the real viewport — any ancestor with a
+          transform/filter/backdrop-filter (like the glass hero bar) would
+          otherwise create its own containing block and break fixed
+          positioning, making these appear to scroll away with the page. */}
+      {createPortal(
+        <>
+          {/* Full-screen drawer — mobile only */}
+          {open && (
+            <div className="sm:hidden fixed inset-0 z-[100]">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
+              <div className="fixed bottom-0 left-0 right-0 rounded-t-2xl p-5 pb-8 shadow-2xl animate-slide-up overflow-y-auto"
+                   style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderBottom: 'none', maxHeight: '85vh' }}>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-bold text-base" style={{ color: 'var(--text-1)' }}>
+                    Filtra
+                    {activeCount > 0 && (
+                      <span className="ml-2 text-xs font-mono bg-red-600 text-white px-2 py-0.5 rounded-full">
+                        {activeCount}
+                      </span>
+                    )}
+                  </h3>
+                  <button onClick={close} className="w-8 h-8 flex items-center justify-center rounded-full btn-ghost p-0" style={{ color: 'var(--text-1)' }}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {filterContent}
+
+                <div className="flex gap-3 mt-5">
+                  {hasFilters && (
+                    <button onClick={() => { onChange(EMPTY); close(); }} className="flex-1 btn-ghost py-3 text-sm">
+                      Pastro
+                    </button>
+                  )}
+                  <button onClick={close} className={`btn-primary py-3 text-sm ${hasFilters ? 'flex-1' : 'w-full'}`}>
+                    Apliko
+                  </button>
+                </div>
+              </div>
             </div>
-
-            {filterContent}
-
-            <div className="flex gap-3 mt-5">
-              {hasFilters && (
-                <button onClick={() => { onChange(EMPTY); close(); }} className="flex-1 btn-ghost py-3 text-sm">
-                  Pastro
-                </button>
-              )}
-              <button onClick={close} className={`btn-primary py-3 text-sm ${hasFilters ? 'flex-1' : 'w-full'}`}>
-                Apliko
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile-only floating Filtra button — circular FAB, safe-area aware */}
-      <div className="sm:hidden fixed left-1/2 -translate-x-1/2 z-40 pointer-events-none"
-           style={{ bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}>
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Hap filtrat"
-          className="pointer-events-auto relative flex items-center justify-center rounded-full transition-all active:scale-90"
-          style={{
-            width: '58px',
-            height: '58px',
-            background: 'linear-gradient(145deg,#ef4444,#b91c1c)',
-            boxShadow: '0 8px 24px rgba(220,38,38,0.45), 0 2px 8px rgba(0,0,0,0.3)',
-          }}
-        >
-          <SlidersHorizontal className="w-6 h-6 text-white" />
-          {activeCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex items-center justify-center text-[11px] font-bold font-mono text-white rounded-full"
-                  style={{ width: '22px', height: '22px', background: '#0c0c1c', border: '2px solid var(--bg-page)' }}>
-              {activeCount}
-            </span>
           )}
-        </button>
-      </div>
+
+          {/* Mobile-only floating Filtra button — circular FAB, safe-area aware */}
+          <div className="sm:hidden fixed left-1/2 -translate-x-1/2 z-40 pointer-events-none"
+               style={{ bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}>
+            <button
+              onClick={() => setOpen(true)}
+              aria-label="Hap filtrat"
+              className="pointer-events-auto relative flex items-center justify-center rounded-full transition-all active:scale-90"
+              style={{
+                width: '58px',
+                height: '58px',
+                background: 'linear-gradient(145deg,#ef4444,#b91c1c)',
+                boxShadow: '0 8px 24px rgba(220,38,38,0.45), 0 2px 8px rgba(0,0,0,0.3)',
+              }}
+            >
+              <SlidersHorizontal className="w-6 h-6 text-white" />
+              {activeCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center text-[11px] font-bold font-mono text-white rounded-full"
+                      style={{ width: '22px', height: '22px', background: '#0c0c1c', border: '2px solid var(--bg-page)' }}>
+                  {activeCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
